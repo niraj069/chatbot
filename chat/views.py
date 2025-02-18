@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key="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")
+client = Groq(api_key="GROQ_API_KEY")
 
 def chatbot_view(request):
     return render(request, 'chat.html')
