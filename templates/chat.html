@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --chat-bg: #f8f9fa;
+            --user-message-bg: #e3f2fd;
+            --bot-message-bg: #f5f5f5;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #ffffff;
+            --chat-bg: #2d2d2d;
+            --user-message-bg: #1e88e5;
+            --bot-message-bg: #424242;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background: var(--chat-bg);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-box {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            border-radius: 10px;
+            background: var(--bg-color);
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-bubble {
+            padding: 12px 18px;
+            border-radius: 15px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            margin-left: auto;
+            background: var(--user-message-bg);
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot-message {
+            margin-right: auto;
+            background: var(--bot-message-bg);
+            border-bottom-left-radius: 5px;
+        }
+
+        .input-area {
+            background: var(--bg-color);
+            border-radius: 25px;
+            padding: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-control {
+            border-radius: 20px;
+            border: none;
+            background: var(--chat-bg);
+            color: var(--text-color);
+        }
+
+        .btn-send {
+            border-radius: 20px;
+            padding: 8px 20px;
+            background: var(--primary-color);
+            border: none;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-send:hover {
+            transform: scale(1.05);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .loading span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            margin: 0 3px;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        .loading span:nth-child(2) { animation-delay: 0.2s; }
+        .loading span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            to { transform: translateY(-10px); }
+        }
+
+        /* Add new table styles */
+        .message-bubble table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+            background: var(--bg-color);
+        }
+
+        .message-bubble th,
+        .message-bubble td {
+            border: 1px solid var(--primary-color);
+            padding: 8px;
+            text-align: left;
+        }
+
+        .message-bubble th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .message-bubble tr:nth-child(even) {
+            background-color: var(--chat-bg);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <div class="container mt-5">
+        <div class="chat-container">
+            <h2 class="text-center mb-4">History Chatbot</h2>
+            <div class="chat-box" id="chatBox"></div>
+            <div class="loading" id="loading">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="input-area">
+                <div class="input-group">
+                    <input type="text" id="userMessage" class="form-control" 
+                           placeholder="Ask a history question..." 
+                           onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button class="btn btn-send" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function toggleTheme() {
+            document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+            const icon = document.querySelector('.theme-toggle i');
+            icon.className = document.body.dataset.theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        function createMessageElement(content, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.innerHTML = `<div class="message-bubble">${content}</div>`;
+            return messageDiv;
+        }
+
+        function processTableTags(content) {
+            // Find content between /start_table and /end_table
+            const tableRegex = /\/start_table([\s\S]*?)\/end_table/g;
+            
+            return content.replace(tableRegex, (match, tableContent) => {
+                // Convert basic HTML tags to proper table structure
+                let processedContent = tableContent
+                    .replace(/<h1>/g, '<th>')
+                    .replace(/<\/h1>/g, '</th>')
+                    .replace(/<table>/g, '<table class="table">')
+                    .replace(/<tr>/g, '<tr>')
+                    .replace(/<td>/g, '<td>');
+                
+                return processedContent;
+            });
+        }
+
+        function sendMessage() {
+            var userMessage = document.getElementById("userMessage").value;
+            if (!userMessage) return;
+            
+            var chatBox = document.getElementById("chatBox");
+            chatBox.appendChild(createMessageElement(userMessage, true));
+            
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("userMessage").value = "";
+            
+            fetch("/chat/get_response/", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": getCookie('csrftoken')
+                },
+                body: `user_message=${userMessage}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("loading").style.display = "none";
+                // Process tables before passing to marked
+                let processedResponse = processTableTags(data.response);
+                const botMessage = marked.parse(processedResponse);
+                chatBox.appendChild(createMessageElement(botMessage, false));
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+    </script>
+</body>
+</html>
